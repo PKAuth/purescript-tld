@@ -2,6 +2,7 @@ module Network.URI.TLD (parseTLD) where
 
 import Control.Monad.Eff (Eff())
 import Data.Foldable (foldl)
+import qualified Data.Lazy as Lazy
 import Data.Maybe
 import qualified Data.String as String
 import Data.Tuple
@@ -39,19 +40,19 @@ break f s =
 
 -- | Parse a domain into its subdomain, domain, and top level domain.
 -- parseTLD :: forall e . String -> Eff (dom :: DOM | e) (Maybe (Tuple3 String String String))
-parseTLD :: forall e . String -> Eff (dom :: DOM | e) (Maybe (Tuple3 String String String))
+parseTLD :: forall e . String -> Eff (dom :: DOM | e) (Maybe {subdomain :: String, domain :: String, tld :: String})
 parseTLD url = do
 	-- let domain = extractDomainName url in
 	domain <- parseURI url
 	return $ helper "" "" $ String.toLower domain
 
 	where
-		tlds = tldSet unit
+		tlds = Lazy.force tldSet
 
 		helper _ _ "" = Nothing
 		helper subdomain domain tld = 
 			if Set.member tld tlds then
-				Just $ tuple3 subdomain domain tld
+				Just $ {subdomain : subdomain, domain : domain, tld : tld}
 			else
 				let subdomain' = 
 					if String.null subdomain then

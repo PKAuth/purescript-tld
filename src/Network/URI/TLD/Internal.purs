@@ -1,12 +1,14 @@
 module Network.URI.TLD.Internal where
 
+import Data.Lazy (Lazy())
+import qualified Data.Lazy as Lazy
 import qualified Data.List as List
 import Data.Set (Set())
 import qualified Data.Set as Set
 import Prelude
 
-tldSet :: Unit -> Set String
-tldSet _ = Set.fromList $ List.toList [
+tldSet :: Lazy (Set String)
+tldSet = Lazy.defer $ \_ -> Set.fromList $ List.toList [
       "localhost"
     , "ac"
     , "com.ac"

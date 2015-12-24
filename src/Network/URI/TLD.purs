@@ -1,13 +1,19 @@
 module Network.URI.TLD (parseTLD) where
 
--- import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff())
 import Data.Foldable (foldl)
 import Data.Maybe
 import qualified Data.String as String
 import Data.Tuple
 import Data.Tuple.Nested
 import qualified Data.Set as Set
--- import DOM (DOM())
+import DOM (DOM())
+import qualified DOM.HTML as DOM
+import qualified DOM.HTML.Types as DOM
+import qualified DOM.HTML.Window as DOM
+import qualified DOM.Node.Document as DOM
+import qualified DOM.Node.Element as Elem
+import DOM.Node.Types (Element())
 import Prelude
 
 import Network.URI.TLD.Internal
@@ -33,10 +39,11 @@ break f s =
 
 -- | Parse a domain into its subdomain, domain, and top level domain.
 -- parseTLD :: forall e . String -> Eff (dom :: DOM | e) (Maybe (Tuple3 String String String))
-parseTLD :: String -> Maybe (Tuple3 String String String)
-parseTLD url =
-	let domain = extractDomainName url in
-	helper "" "" $ String.toLower domain
+parseTLD :: forall e . String -> Eff (dom :: DOM | e) (Maybe (Tuple3 String String String))
+parseTLD url = do
+	-- let domain = extractDomainName url in
+	domain <- parseURI url
+	return $ helper "" "" $ String.toLower domain
 
 	where
 		tlds = tldSet unit
@@ -63,10 +70,13 @@ parseTLD url =
 								_ ->
 									Nothing
 
-	-- 	parseURI url = do
-	-- 		document <- DOM.htmlDocumentToDocument <$> (DOM.window >>= DOM.document)
-	-- 		a <- DOM.createElement "a" document
-	-- 		DOM.setAttribute a
-	-- 		-- How do I call hostname?
+		parseURI url = do
+			document <- DOM.htmlDocumentToDocument <$> (DOM.window >>= DOM.document)
+			a <- DOM.createElement "a" document
+			Elem.setAttribute "href" url a
+			hostname a
+			-- How do I call hostname?
 
-foreign import extractDomainName :: String -> String
+foreign import hostname :: forall e . Element -> Eff (dom :: DOM | e) String 
+
+-- foreign import extractDomainName :: String -> String

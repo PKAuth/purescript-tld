@@ -10,6 +10,8 @@
 // };
 
 exports.hostname = function( element) {
-	return element.hostname
+	return function() {
+		return element.hostname
+	}
 };
 

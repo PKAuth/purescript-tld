@@ -1,12 +1,13 @@
 module Network.URI.TLD (parseTLD) where
 
 import Control.Monad.Eff (Eff())
-import Data.Foldable (foldl)
+import qualified Data.Array as Array
+-- import Data.Foldable (foldl)
 import qualified Data.Lazy as Lazy
 import Data.Maybe
 import qualified Data.String as String
-import Data.Tuple
-import Data.Tuple.Nested
+-- import Data.Tuple
+-- import Data.Tuple.Nested
 import qualified Data.Set as Set
 import DOM (DOM())
 import qualified DOM.HTML as DOM
@@ -19,23 +20,26 @@ import Prelude
 
 import Network.URI.TLD.Internal
 
--- http://hackage.haskell.org/package/text-1.2.2.0/docs/Data-Text.html#v:break
-break :: (Char -> Boolean) -> String -> (Tuple String String)
-break f s = 
-	-- Can't write this?
-	-- let Tuple (Tuple pre post) _ = foldl helper (tuple3 [] [] True) $ String.toCharArray s in
-	-- Tuple (String.fromCharArray pre) (String.fromCharArray post)
-	case foldl helper (tuple3 [] [] true) $ String.toCharArray s of
-		Tuple (Tuple pre post) _ -> 
-			Tuple (String.fromCharArray pre) (String.fromCharArray post)
+-- -- http://hackage.haskell.org/package/text-1.2.2.0/docs/Data-Text.html#v:break
+-- break :: (Char -> Boolean) -> String -> (Tuple String String)
+-- break f s = 
+-- 	-- Can't write this?
+-- 	-- let Tuple (Tuple pre post) _ = foldl helper (tuple3 [] [] True) $ String.toCharArray s in
+-- 	-- Tuple (String.fromCharArray pre) (String.fromCharArray post)
+-- 	case foldl helper (tuple3 [] [] true) $ String.toCharArray s of
+-- 		Tuple (Tuple pre post) _ -> 
+-- 			Tuple (String.fromCharArray pre) (String.fromCharArray post)
+-- 
+-- 	where
+-- 		helper (Tuple (Tuple pre post) false) c = tuple3 pre (post <> [c]) false
+-- 		helper (Tuple (Tuple pre post) true) c = 
+-- 			if f c then
+-- 				tuple3 (pre <> [c]) post true
+-- 			else
+-- 				tuple3 pre (post <> [c]) false
 
-	where
-		helper (Tuple (Tuple pre post) false) c = tuple3 pre (post <> [c]) false
-		helper (Tuple (Tuple pre post) true) c = 
-			if f c then
-				tuple3 (pre <> [c]) post true
-			else
-				tuple3 pre (post <> [c]) false
+break :: forall a. (a -> Boolean) -> Array a -> { init :: Array a, rest :: Array a }
+break f a = Array.span (\c -> not (f c)) a
 				
 
 -- | Parse a domain into its subdomain, domain, and top level domain.
@@ -60,16 +64,19 @@ parseTLD url = do
 					else
 						subdomain <> "." <> domain
 				in
-				case break (== '.') tld of -- Note: change this if syntax is upgraded.
-					(Tuple domain' tld') ->
-						if String.null domain' then
+				let split = break (== '.') $ String.toCharArray tld in
+				-- case break (== '.') tld of -- Note: change this if syntax is upgraded.
+				-- 	(Tuple domain' tld') ->
+				let domain' = String.fromCharArray split.init in
+				let tld' = String.fromCharArray split.rest in
+				if String.null domain' then
+					Nothing
+				else
+					case String.uncons tld' of
+						Just {head:'.', tail: tld''} -> 
+							helper subdomain' domain' tld''
+						_ ->
 							Nothing
-						else
-							case String.uncons tld' of
-								Just {head:'.', tail: tld''} -> 
-									helper subdomain' domain' tld''
-								_ ->
-									Nothing
 
 		parseURI url = do
 			document <- DOM.htmlDocumentToDocument <$> (DOM.window >>= DOM.document)
